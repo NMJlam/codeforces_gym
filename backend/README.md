@@ -70,7 +70,7 @@ than failing on the first request that needs one.
 | `POST /attempts/{id}/resume` | restart it; the paused time does not count against the 45 minutes |
 | `PATCH /attempts/{id}` | key idea / upsolve flag only; never score or rating |
 | `GET /skills` | per-tag state (`not_yet_relevant`/`unknown`/`weak`/`strong`) + group ratings |
-| `GET /history` | sessions and attempts, newest first |
+| `GET /history` | the attempt log, newest first; `q`, `page` and `per_page` search and page it (no params = the whole log) |
 | `POST /sync/catalog` | problems, tags, contest metadata, tag emergence |
 | `POST /sync/submissions` | outside solves → seen (reason `external`), never rated |
 | `POST /sync/contests` | replay entered contests that have no attempts yet |

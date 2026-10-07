@@ -62,7 +62,7 @@ User routes are mounted at `/api/users/...` (`GET /api/users/me`); sync routes a
 | `POST /attempts/{id}/resume` | restart it at where it stopped |
 | `PATCH /attempts/{id}` | key idea, upsolve status |
 | `GET /skills` | tag states (not yet relevant / unknown / weak / strong) + group ratings |
-| `GET /history` | past sessions/attempts |
+| `GET /history` | the attempt log, newest first; `q`/`page`/`per_page` search and page it |
 | `POST /sync/catalog` | problems (skipping `*special`), tags, emergence (3% of ±200-smoothed share per bucket) (built) |
 | `POST /sync/submissions` | outside solves → logged, seen, never rated |
 | `POST /sync/contests` | replay new contests (Should) |

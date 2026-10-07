@@ -66,16 +66,51 @@ def test_history_returns_only_this_users_attempts_newest_first(client, user, his
         problem.contest_id for problem in problems[:3]
     }
 
-    nested = body["sessions"][0]
-    assert nested["id"] == session.id and nested["tag"] == "dp"
-    assert [attempt["source"] for attempt in nested["attempts"]] == ["session"]
-    assert nested["attempts"][0]["key_idea"] == "parity"
-
     solved = body["attempts"][1]
     assert solved["s"] == 1 and solved["e_model"] == pytest.approx(0.5)
     assert solved["overall_after"] == 1500.0
     assert solved["problem"]["editorial_search"].endswith("editorial")
     assert body["attempts"][2]["upsolved_at"] is not None
+
+
+def test_history_counts_the_whole_log_for_the_header(client, user, history):
+    body = client.get(HISTORY, headers=auth(user.email)).json
+
+    assert body["attempts_total"] == 3  # the other user's attempt is not counted
+    assert body["rated_total"] == 3
+    assert body["solved_total"] == 1
+
+
+def test_history_pages_the_log(client, user, history):
+    first = client.get(f"{HISTORY}?page=1&per_page=2", headers=auth(user.email)).json
+    second = client.get(f"{HISTORY}?page=2&per_page=2", headers=auth(user.email)).json
+    past_the_end = client.get(f"{HISTORY}?page=3&per_page=2", headers=auth(user.email)).json
+
+    assert (first["page"], first["per_page"]) == (1, 2)
+    assert [attempt["source"] for attempt in first["attempts"]] == ["session", "self_selected"]
+    assert [attempt["source"] for attempt in second["attempts"]] == ["contest"]
+    assert past_the_end["attempts"] == []
+    # The counters describe the log, not the page.
+    assert all(page["attempts_total"] == 3 for page in (first, second, past_the_end))
+
+
+def test_history_searches_problem_names_handles_and_notes(client, user, history):
+    target = history[1][0]
+    handle = f"{target.contest_id}{target.problem_index}"
+
+    by_name = client.get(HISTORY, query_string={"q": target.name}, headers=auth(user.email)).json
+    assert [attempt["problem"]["name"] for attempt in by_name["attempts"]] == [target.name]
+    assert by_name["q"] == target.name  # echoed back for the client's range label
+
+    by_handle = client.get(HISTORY, query_string={"q": handle}, headers=auth(user.email)).json
+    assert [attempt["problem"]["name"] for attempt in by_handle["attempts"]] == [target.name]
+
+    by_note = client.get(HISTORY, query_string={"q": "parity"}, headers=auth(user.email)).json
+    assert [attempt["source"] for attempt in by_note["attempts"]] == ["session"]
+
+    missing = client.get(HISTORY, query_string={"q": "no such problem"}, headers=auth(user.email)).json
+    assert missing["attempts"] == [] and missing["attempts_total"] == 0
+
 
 
 def test_history_never_exposes_tags(client, user, history):
