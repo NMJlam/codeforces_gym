@@ -33,7 +33,7 @@ the profile carries a slider for its four tabs.
 | `/session` | the whole flow, behind a picker: **Recommended** (start, pick, open with the 45-minute countdown, pause/resume, Done/give up, notes, finish) or **Self-picked** (bring your own problem id) |
 | `/profile/dashboard` | rating ± RD, today's session, the activity calendar, topic radars, rating over time |
 | `/profile/topics` | every tag's rating, RD and state (`weak`/`strong`/`unknown`/`not yet relevant`) |
-| `/profile/history` | sessions with their attempts, plus a flat attempt table |
+| `/profile/history` | the attempt log: searchable and one page at a time, notes open in a dialog |
 | `/profile/setup` | Codeforces handle, one-time seeding, catalog/submission/contest syncs |
 
 ## Layout
@@ -51,11 +51,11 @@ the profile carries a slider for its four tabs.
 - `src/lib/components/contribution-graph.svelte` — the GitHub-style activity
   calendar on the dashboard. A pure view of `GET /history`: one square per
   local day, one column per week, shaded by that day's attempt count.
-- `src/lib/components/` — `attempt-card`, `note-editor`, `problem-line` and
-  small UI primitives (`button`, `panel`, `badge`, `input`, `textarea`) in the
-  same Tailwind style as the vendored `ui/tabs` and `ui/table` components.
-  Tables use `Table.Root variant="card"` for the separated-border, rounded-row
-  look.
+- `src/lib/components/` — `attempt-card`, `attempt-notes-dialog`, `note-editor`,
+  `problem-line` and small UI primitives (`button`, `dialog`, `panel`, `badge`,
+  `input`, `textarea`) in the same Tailwind style as the vendored `ui/tabs` and
+  `ui/table` components. Tables use `Table.Root variant="card"` for the
+  separated-border, rounded-row look.
 
 ## Rules the UI keeps
 
@@ -63,15 +63,24 @@ the profile carries a slider for its four tabs.
   and the editorial search string only appears once the attempt is scored — the
   pick card deliberately has neither.
 - **Notes stay out of the way.** The key-idea box is collapsed on every card,
-  failed attempts included — the result panel already asks for it.
+  failed attempts included — the result panel already asks for it — and the
+  history table opens the same editor in a dialog instead of printing a column
+  of textareas.
 - **A save never closes anything.** `note-editor` moves its own baseline
   instead: the button goes quiet, a "Saved" note appears for a moment, and the
-  editor stays where it is, showing the note it just stored.
+  editor stays where it is, showing the note it just stored. Both hosts follow
+  the rule — the card keeps its disclosure open, the dialog stays up (the page
+  re-reads the row behind it). Closing is the user's: the dialog's X, Escape,
+  or the backdrop.
 - **Notes are markdown.** `lib/markdown.ts` is the single renderer, configured
   with `html: false` and markdown-it's own link validation, which is why the
   output needs no sanitizer pass before `{@html}`. The editor (`note-editor`)
   carries the Display/Source picker and previews the draft, not the stored
   copy.
+- **The log never travels whole.** `/profile/history` asks for one page at a
+  time and searches server-side (problem name, `1234A` handle, index, key
+  idea), and its pager describes the reply on screen — never the request still
+  in flight.
 - **The timer is the server's.** The countdown is a view of the attempt's
   `deadline`; when it reaches zero the client re-reads the session and lets the
   backend score the run-out attempt, because every endpoint that touches an

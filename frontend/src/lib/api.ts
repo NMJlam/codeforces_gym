@@ -90,16 +90,30 @@ export type Skills = {
 	tags: { tag: string; group: string; rating: number; rd: number; state: SkillState }[];
 };
 
-export type History = {
-	sessions: {
-		id: number;
-		tag: string | null;
-		started_at: string;
-		ended_at: string | null;
-		attempts: Attempt[];
-	}[];
-	attempts: Attempt[];
+/** The whole-log counters the history header shows. They ignore `q`. */
+export type HistoryCounts = {
+	/** Attempts matching the search — the log's size when nothing is searched. */
+	attempts_total: number;
+	/** Scored attempts: the ones the rating engine consumed. */
+	rated_total: number;
+	solved_total: number;
 };
+
+export type History = HistoryCounts & {
+	attempts: Attempt[];
+	page: number;
+	per_page: number;
+	/** The search this reply answers, echoed by the server ('' for none). */
+	q: string;
+};
+
+/**
+ * `q`, `page` and `per_page` page and search the attempt log; a `q` matches a
+ * problem's name, its "1234A" handle, its index or the attempt's key idea. With
+ * none of the three the whole log comes back, which is what the dashboard's
+ * charts read.
+ */
+export type HistoryQuery = { q?: string; page?: number; per_page?: number };
 
 export type SeedResult = {
 	rating: Rating;
@@ -212,7 +226,14 @@ export const api = {
 		request<Attempt>(`/attempts/${attemptId}`, { method: 'PATCH', body }),
 
 	skills: () => request<Skills>('/skills'),
-	history: () => request<History>('/history'),
+	history: (query: HistoryQuery = {}) => {
+		const params = new URLSearchParams();
+		if (query.q) params.set('q', query.q);
+		if (query.page) params.set('page', String(query.page));
+		if (query.per_page) params.set('per_page', String(query.per_page));
+		const suffix = params.toString();
+		return request<History>(suffix ? `/history?${suffix}` : '/history');
+	},
 
 	syncCatalog: () => request<Counts>('/sync/catalog', { method: 'POST' }),
 	syncSubmissions: () => request<Counts>('/sync/submissions', { method: 'POST' }),
