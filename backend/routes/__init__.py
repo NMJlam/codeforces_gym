@@ -14,7 +14,10 @@ from sqlalchemy.exc import IntegrityError
 
 from model import User, db
 
+from .sync import sync_bp
+
 api_bp = Blueprint("api", __name__)
+api_bp.register_blueprint(sync_bp, url_prefix="/sync")
 
 # Keyed by certs URL so the cache follows a changed CF_TEAM_DOMAIN (tests and
 # reloads rebuild the app; the module global would otherwise go stale).
