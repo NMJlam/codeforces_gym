@@ -1,0 +1,15 @@
+.venv
+__pycache__
+
+# Never ship a development .env: app.py loads one unconditionally, and its
+# ENV=development / AUTH_DISABLED=1 would skip authentication entirely.
+.env
+.env.*
+!.env.example
+
+# Editor/OS and tool caches — noise in an image, and .DS_Store is not even ours.
+.DS_Store
+.pytest_cache
+.ruff_cache
+.pyright_cache
+*.log

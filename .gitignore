@@ -1,0 +1,16 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Production environment (see .env.prod.example)
+.env.prod
+
+# Database dumps written by `just prod-backup`
+backups/

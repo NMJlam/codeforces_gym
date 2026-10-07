@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:17
+    container_name: codeforces_gym_db
+    environment:
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: codeforces_gym_db
+    ports:
+      # Loopback-only: the dev database is not exposed to the LAN. Host 5434
+      # because other PostgreSQL servers already own 5432/5433 on this machine.
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "codeforces_gym_db"]
+      interval: 2s
+      retries: 15
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:secret@db:5432/codeforces_gym_db
+      SECRET_KEY: dev-only-change-me
+      ENV: development
+      AUTH_DISABLED: "1"  # dev only: act as DEV_EMAIL
+      # The single user's own Cloudflare Access email, so local development sees
+      # the same row production would (their handle and ratings).
+      DEV_EMAIL: nathan.lam.rt@gmail.com
+    ports:
+      - "127.0.0.1:5001:5001"
+    volumes:
+      - ./backend:/app  # live reload; the venv lives at /venv, outside the mount
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    environment:
+      API_URL: http://backend:5001
+    ports:
+      - "127.0.0.1:5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # keep the image's Linux node_modules, not the host's
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
