@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "svelte-code-writer": {
+      "source": "sveltejs/ai-tools",
+      "sourceType": "github",
+      "skillPath": "plugins/claude/svelte/skills/svelte-code-writer/SKILL.md",
+      "computedHash": "6f78193a79906175595ce8e4ca8d726da350eb99035a9544b6553620df5673a1"
+    }
+  }
+}

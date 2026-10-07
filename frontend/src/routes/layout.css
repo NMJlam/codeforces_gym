@@ -1,0 +1,129 @@
+@import 'tailwindcss';
+@import "tw-animate-css";
+@import "shadcn-svelte/tailwind.css";
+@import "@fontsource-variable/inter";
+@import 'layerchart/shadcn-svelte.css';
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+  Dark "night" palette (daisyUI night) with an indigo primary, matching the
+  LayerChart docs. Kept in :root so `class="dark"` on <html> only has to toggle
+  `dark:` variants; every color token already resolves to the dark values.
+*/
+:root {
+	--background: #15191e;
+	--foreground: #e6e8ee;
+	--card: #1d232a;
+	--card-foreground: #e6e8ee;
+	--popover: #1d232a;
+	--popover-foreground: #e6e8ee;
+	--primary: #7480ff;
+	--primary-foreground: #050617;
+	--secondary: #2a323c;
+	--secondary-foreground: #e6e8ee;
+	--muted: #1d232a;
+	--muted-foreground: #a6adbb;
+	--accent: #2a323c;
+	--accent-foreground: #e6e8ee;
+	--destructive: #ff5861;
+	--border: color-mix(in oklab, #a6adbb 20%, transparent);
+	--input: color-mix(in oklab, #a6adbb 20%, transparent);
+	--ring: #7480ff;
+	--chart-1: #7480ff;
+	--chart-2: #ff52d9;
+	--chart-3: #00cdb7;
+	--chart-4: #00b5ff;
+	--chart-5: #ffbe00;
+	--radius: 0.625rem;
+	--sidebar: #1d232a;
+	--sidebar-foreground: #e6e8ee;
+	--sidebar-primary: #7480ff;
+	--sidebar-primary-foreground: #050617;
+	--sidebar-accent: #2a323c;
+	--sidebar-accent-foreground: #e6e8ee;
+	--sidebar-border: color-mix(in oklab, #a6adbb 20%, transparent);
+	--sidebar-ring: #7480ff;
+
+	/* Tokens LayerChart's shadcn preset reads (see layerchart/shadcn-svelte.css). */
+	--card-background: var(--card);
+	--card-muted: var(--muted);
+}
+
+@theme inline {
+	--font-sans: 'Inter Variable', sans-serif;
+	--color-sidebar-ring: var(--sidebar-ring);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar: var(--sidebar);
+	--color-chart-5: var(--chart-5);
+	--color-chart-4: var(--chart-4);
+	--color-chart-3: var(--chart-3);
+	--color-chart-2: var(--chart-2);
+	--color-chart-1: var(--chart-1);
+	--color-ring: var(--ring);
+	--color-input: var(--input);
+	--color-border: var(--border);
+	--color-destructive: var(--destructive);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-accent: var(--accent);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-muted: var(--muted);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-secondary: var(--secondary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-primary: var(--primary);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-popover: var(--popover);
+	--color-card-foreground: var(--card-foreground);
+	--color-card: var(--card);
+	--color-foreground: var(--foreground);
+	--color-background: var(--background);
+	--radius-sm: calc(var(--radius) * 0.6);
+	--radius-md: calc(var(--radius) * 0.8);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) * 1.4);
+	--radius-2xl: calc(var(--radius) * 1.8);
+	--radius-3xl: calc(var(--radius) * 2.2);
+	--radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	body {
+		@apply bg-background text-foreground;
+	}
+	html {
+		@apply font-sans;
+	}
+}
+
+/* Page backdrop: a purple radial glow and a dual-scale grid, both in the primary
+   hue at low opacity (same recipe as the LayerChart docs). */
+@layer utilities {
+	.background-gradient {
+		background: radial-gradient(
+			49.63% 57.02% at 58.99% -7.2%,
+			color-mix(in oklab, var(--color-primary) 5%, transparent) 39.4%,
+			transparent 100%
+		);
+	}
+
+	.background-grid {
+		--size: 50px;
+		--_g: #0000 90deg, color-mix(in srgb, var(--color-primary) 5%, transparent) 0;
+
+		background:
+			conic-gradient(from 90deg at 2px 2px, var(--_g)) 0 0 / var(--size) var(--size),
+			conic-gradient(from 90deg at 1px 1px, var(--_g)) 0 0 / calc(var(--size) / 5)
+				calc(var(--size) / 5);
+		/* Fade the grid out toward the bottom so it stays a backdrop, not noise. */
+		mask-image: linear-gradient(to bottom, #000 0%, transparent 70%);
+	}
+}
