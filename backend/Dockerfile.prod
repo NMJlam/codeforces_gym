@@ -1,0 +1,37 @@
+# Production image: gunicorn, no reload, no debugger, non-root.
+#
+# The dev image (Dockerfile) stays as it is — bind-mounted source and Flask's
+# debug server — because that is what docker-compose.yml runs.
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+
+ENV UV_PROJECT_ENVIRONMENT=/venv \
+    UV_COMPILE_BYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/venv/bin:$PATH"
+
+WORKDIR /app
+
+# Dependencies first: they change far less often than the source.
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev
+
+COPY . .
+
+# Never ship a development .env: app.py loads one unconditionally, and its
+# ENV=development / AUTH_DISABLED=1 would skip authentication entirely. The
+# build context excludes it too (.dockerignore); this is the belt to that brace.
+RUN rm -f .env \
+    && chmod +x entrypoint.sh \
+    && useradd --create-home --uid 10001 app
+
+USER app
+
+EXPOSE 5001
+
+# /healthz is outside the /api blueprint, so it needs no Cloudflare Access
+# token, and it touches Postgres — a backend that lost its database reports
+# unhealthy instead of merely alive.
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5001/healthz', timeout=4)"]
+
+ENTRYPOINT ["./entrypoint.sh"]
