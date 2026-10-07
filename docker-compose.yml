@@ -1,12 +1,118 @@
+# One stack, two environments; Compose profiles pick which one runs. Every
+# service belongs to exactly one profile, so the two never mix: dev has its own
+# database and its own loopback ports, and the production database is the only
+# one that stays unpublished.
+#
+#   just up        → docker compose --profile dev  up -d --build
+#   just prod-up   → docker compose -p codeforces-gym-prod --profile prod --env-file .env.prod up -d --build
+#
+# Every service being profiled means a bare `docker compose up` starts nothing;
+# the repository-root .env sets COMPOSE_PROFILES=dev so that command still
+# brings up the dev stack. `--env-file .env.prod` replaces that .env, which is
+# why the prod command passes --profile prod explicitly.
+#
+# `-p` keeps the environments apart: the Compose project name namespaces both
+# the containers and the postgres_data volume (dev: this directory →
+# codeforces_gym_postgres_data; prod: codeforces-gym-prod_postgres_data).
+#
+# Prod service names are the plain ones because frontend/nginx.conf proxies to
+# `backend:5001`; the dev services carry a `-dev` suffix.
+#
+# ponytail: `-dev` names instead of templating nginx's upstream through
+# envsubst. Add the template when a third environment needs a third name.
+#
+# Every environment value below is `${VAR:-...}`, never `${VAR:?...}`: Compose
+# interpolates the whole file *before* profiles filter services, so a required
+# variable in a prod service would break `just up` without a .env.prod. The
+# required-ness lives in config.py (_required), which already refuses to start
+# on an empty SECRET_KEY / CF_TEAM_DOMAIN / CF_AUD / DATABASE_URL. The one
+# value that would otherwise fall back silently is POSTGRES_PASSWORD, so
+# `just prod-up` checks it instead — see justfile.
+
 services:
+  # ---- Production (homelab, behind a Cloudflare Tunnel) ----------------
+
+  # Nothing is published to the LAN or the internet. cloudflared dials out, and
+  # the only bound ports are loopback, for debugging. The backend stays
+  # unpublished on purpose: its sole identity source is the
+  # `Cf-Access-Jwt-Assertion` header the tunnel's edge injects, so a reachable
+  # backend is a reachable impersonation primitive.
+
   db:
+    profiles: [prod]
     image: postgres:17
-    container_name: codeforces_gym_db
+    restart: unless-stopped
     environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      POSTGRES_DB: codeforces_gym_db
+    # Deliberately no `ports`, unlike the dev database: host tooling resolves
+    # localhost:5434, and a `just migrate` or `just dev-backend` pointed at the
+    # production database is the one accident worth designing out.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "codeforces_gym_db"]
+      interval: 5s
+      retries: 15
+
+  backend:
+    profiles: [prod]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD:-secret}@db:5432/codeforces_gym_db
+      SECRET_KEY: ${SECRET_KEY:-}
+      # ENV=production makes config.py refuse to start if AUTH_DISABLED is set
+      # anywhere, and AUTH_DISABLED is deliberately absent from .env.prod.
+      ENV: production
+      CF_TEAM_DOMAIN: ${CF_TEAM_DOMAIN:-}
+      CF_AUD: ${CF_AUD:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    profiles: [prod]
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      # Debugging only — cloudflared reaches nginx over the compose network.
+      # `/api` still needs a real Access token, so this is not a way in.
+      - "127.0.0.1:8080:80"
+
+  cloudflared:
+    profiles: [prod]
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    # Reads TUNNEL_TOKEN from the environment.
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      frontend:
+        condition: service_started
+
+  # ---- Local development (bind mounts, Flask --debug, Vite HMR) --------
+
+  db-dev:
+    profiles: [dev]
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      # The value backend/.env.example uses, because the host-side tooling
+      # (`just migrate`, `just test`, `just dev-backend`) connects to this
+      # database over 127.0.0.1:5434.
       POSTGRES_PASSWORD: secret
       POSTGRES_DB: codeforces_gym_db
     ports:
-      # Loopback-only: the dev database is not exposed to the LAN. Host 5434
+      # Loopback-only: the dev database is never exposed to the LAN. Host 5434
       # because other PostgreSQL servers already own 5432/5433 on this machine.
       - "127.0.0.1:5434:5432"
     volumes:
@@ -16,10 +122,11 @@ services:
       interval: 2s
       retries: 15
 
-  backend:
+  backend-dev:
+    profiles: [dev]
     build: ./backend
     environment:
-      DATABASE_URL: postgresql+psycopg://postgres:secret@db:5432/codeforces_gym_db
+      DATABASE_URL: postgresql+psycopg://postgres:secret@db-dev:5432/codeforces_gym_db
       SECRET_KEY: dev-only-change-me
       ENV: development
       AUTH_DISABLED: "1"  # dev only: act as DEV_EMAIL
@@ -31,20 +138,21 @@ services:
     volumes:
       - ./backend:/app  # live reload; the venv lives at /venv, outside the mount
     depends_on:
-      db:
+      db-dev:
         condition: service_healthy
 
-  frontend:
+  frontend-dev:
+    profiles: [dev]
     build: ./frontend
     environment:
-      API_URL: http://backend:5001
+      API_URL: http://backend-dev:5001
     ports:
       - "127.0.0.1:5173:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules  # keep the image's Linux node_modules, not the host's
     depends_on:
-      - backend
+      - backend-dev
 
 volumes:
   postgres_data:

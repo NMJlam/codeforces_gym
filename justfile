@@ -1,8 +1,13 @@
 # Codeforces Gym — task runner. Run `just` to list recipes.
 #
-# The recipes up to "Host-only dev" are local development: the Compose services
-# are dev images (bind mounts, Flask --debug, Vite HMR). The `prod-*` recipes
-# run the homelab stack from docker-compose.prod.yml — see README.md, Deploying.
+# docker-compose.yml holds both stacks; a Compose profile picks one. The plain
+# recipes below run `--profile dev` (bind mounts, Flask --debug, Vite HMR), the
+# `prod-*` recipes run `--profile prod` (gunicorn, nginx, cloudflared) — see
+# README.md, Deploying. `db` has no profile, so both share it.
+
+# The project name is what keeps the two postgres_data volumes apart.
+dev  := "docker compose --profile dev"
+prod := "docker compose -p codeforces-gym-prod --profile prod --env-file .env.prod"
 
 # List recipes.
 default:
@@ -23,29 +28,29 @@ env:
 
 # Build and start everything. Frontend http://localhost:5173, backend :5001.
 up: env
-    docker compose up -d --build
+    {{ dev }} up -d --build
 
 # Stop and remove containers (the postgres_data volume is kept).
 down:
-    docker compose down
+    {{ dev }} down
 
 # Rebuild and restart.
 restart: down up
 
-# Tail logs for all services, or one: `just logs backend`.
+# Tail logs for all services, or one: `just logs backend-dev`.
 logs +services="":
-    docker compose logs -f {{ services }}
+    {{ dev }} logs -f {{ services }}
 
 # Show service status.
 ps:
-    docker compose ps
+    {{ dev }} ps
 
 # ---- Database -----------------------------------------------------------
 
 # Start only PostgreSQL and wait until it accepts connections.
 db:
-    docker compose up -d db
-    cd backend && until docker compose exec db pg_isready -U postgres -d codeforces_gym_db >/dev/null 2>&1; do sleep 0.3; done
+    {{ dev }} up -d db-dev
+    cd backend && until {{ dev }} exec db-dev pg_isready -U postgres -d codeforces_gym_db >/dev/null 2>&1; do sleep 0.3; done
     @echo "postgres ready"
 
 # Apply migrations up to head.
@@ -90,49 +95,55 @@ simulate seed="1" users="100" attempts="1000":
 
 # ---- Production (homelab, behind a Cloudflare Tunnel) -------------------
 
-# Create .env.prod from the example, if absent.
+# Create .env.prod from the example, if absent, and refuse to start with an
+# empty POSTGRES_PASSWORD: it is the one variable whose compose default
+# (`secret`, the dev password) is still a valid value, so config.py cannot
+# catch it. Everything else is either consumed by config.py's _required or
+# fails inside cloudflared.
 prod-env:
     @test -f .env.prod || { cp .env.prod.example .env.prod; echo "wrote .env.prod — fill in the blanks"; }
+    @grep -qE '^POSTGRES_PASSWORD=.+' .env.prod || { echo "fill in POSTGRES_PASSWORD in .env.prod"; exit 1; }
 
-# Build and start the production stack. Nothing is published except the loopback
-# debug port 8080; cloudflared is what makes it reachable.
+# Build and start the production stack. Only the loopback debug ports (8080,
+# and 5434 for the shared db) are published; cloudflared is what makes it
+# reachable.
 prod-up: prod-env
-    docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+    {{ prod }} up -d --build
 
 # Stop the production stack (the postgres_data volume is kept).
 prod-down:
-    docker compose -f docker-compose.prod.yml --env-file .env.prod down
+    {{ prod }} down
 
 # Rebuild and restart the production stack.
 prod-restart: prod-down prod-up
 
 # Tail production logs, or one service: `just prod-logs backend`.
 prod-logs +services="":
-    docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f {{ services }}
+    {{ prod }} logs -f {{ services }}
 
 # Show production service status, including healthchecks.
 prod-ps:
-    docker compose -f docker-compose.prod.yml --env-file .env.prod ps
+    {{ prod }} ps
 
 # Apply migrations by hand. The backend entrypoint already does this on start;
 # this is for recovering a stack that is up but behind the schema.
 prod-migrate:
-    docker compose -f docker-compose.prod.yml --env-file .env.prod exec backend flask --app app db upgrade
+    {{ prod }} exec backend flask --app app db upgrade
 
-# Refresh problems/tags/contests from Codeforces, inside the stack. The
-# production database has no published port, so this cannot run from the host.
+# Refresh problems/tags/contests from Codeforces, inside the stack, where the
+# app's dependencies and the database live.
 prod-catalog:
-    docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T backend python -m scripts.populate_codeforces
+    {{ prod }} exec -T backend python -m scripts.populate_codeforces
 
 # Dump the production database, gzipped and timestamped, into backups/.
 prod-backup:
     @mkdir -p backups
-    docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T db pg_dump -U postgres codeforces_gym_db | gzip > backups/gym-$(date +%Y%m%d-%H%M%S).sql.gz
+    {{ prod }} exec -T db pg_dump -U postgres codeforces_gym_db | gzip > backups/gym-$(date +%Y%m%d-%H%M%S).sql.gz
     @ls -lht backups | head -3
 
 # psql shell into the production database.
 prod-db:
-    docker compose -f docker-compose.prod.yml --env-file .env.prod exec db psql -U postgres -d codeforces_gym_db
+    {{ prod }} exec db psql -U postgres -d codeforces_gym_db
 
 # ---- Host-only dev (no Docker for the app) ------------------------------
 

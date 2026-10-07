@@ -7,7 +7,7 @@ components. Charts come from `layerchart`. It talks to the Flask service under
 ## Running it
 
 ```sh
-docker compose up -d          # from the repository root: frontend on :5173
+just up                       # from the repository root: frontend on :5173
 ```
 
 Or on the host, against a backend you are already running:

@@ -1,7 +1,8 @@
 # Production image: gunicorn, no reload, no debugger, non-root.
 #
 # The dev image (Dockerfile) stays as it is — bind-mounted source and Flask's
-# debug server — because that is what docker-compose.yml runs.
+# debug server — because that is what the `dev` profile of docker-compose.yml
+# runs.
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 
 ENV UV_PROJECT_ENVIRONMENT=/venv \

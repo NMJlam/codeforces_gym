@@ -11,7 +11,7 @@ It's built with:
 - **Frontend:** SvelteKit 5 running as a plain single page app, with Tailwind 4
   and shadcn-svelte.
 - **Dev setup:** one `docker-compose.yml` that runs PostgreSQL 17, the Flask
-  dev server and Vite.
+  dev server and Vite; the same file's `prod` profile is the homelab stack.
 
 If you want more detail, [`backend/README.md`](backend/README.md) and
 [`frontend/README.md`](frontend/README.md) cover each side, and
@@ -77,8 +77,12 @@ It runs on a homelab behind a **Cloudflare Tunnel**, so nothing is port-forwarde
 and Cloudflare Access does the login: the backend's only identity source is the
 `Cf-Access-Jwt-Assertion` header the tunnel's edge adds to every request.
 
-`docker-compose.prod.yml` is that stack — Postgres, gunicorn, nginx and
-cloudflared — and the dev files are untouched.
+The `prod` profile of `docker-compose.yml` is that stack — Postgres, gunicorn,
+nginx and cloudflared. Dev and prod each get their own database, and the two are
+kept apart by Compose project name (`-p codeforces-gym-prod`), which namespaces
+the containers and the data volumes; the `prod-*` recipes pass that for you. The
+dev database publishes a loopback port for host tooling, the production one does
+not.
 
 ```sh
 cp .env.prod.example .env.prod   # POSTGRES_PASSWORD, SECRET_KEY, CF_TEAM_DOMAIN, CF_AUD, TUNNEL_TOKEN
