@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from model import User, db
 
 from .attempt import attempt_bp
+from .report import report_bp
 from .session import session_bp
 from .sync import sync_bp
 
@@ -22,6 +23,7 @@ api_bp = Blueprint("api", __name__)
 api_bp.register_blueprint(sync_bp, url_prefix="/sync")
 api_bp.register_blueprint(session_bp, url_prefix="/sessions")
 api_bp.register_blueprint(attempt_bp, url_prefix="/attempts")
+api_bp.register_blueprint(report_bp)
 
 # Keyed by certs URL so the cache follows a changed CF_TEAM_DOMAIN (tests and
 # reloads rebuild the app; the module global would otherwise go stale).
