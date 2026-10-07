@@ -18,8 +18,10 @@ from .attempt import attempt_bp
 from .report import report_bp
 from .session import session_bp
 from .sync import sync_bp
+from .user import user_bp
 
 api_bp = Blueprint("api", __name__)
+api_bp.register_blueprint(user_bp, url_prefix="/users")
 api_bp.register_blueprint(sync_bp, url_prefix="/sync")
 api_bp.register_blueprint(session_bp, url_prefix="/sessions")
 api_bp.register_blueprint(attempt_bp, url_prefix="/attempts")
