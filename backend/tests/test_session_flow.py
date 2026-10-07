@@ -417,44 +417,6 @@ def test_patch_refuses_unknown_fields_and_unscored_attempts(client, user, seeded
                         json={}).status_code == 400
 
 
-def test_self_selected_attempts_are_rated_and_guard_the_catalog(client, user, seeded):
-    problem = db.session.query(Problem).filter(Problem.rating.isnot(None)).first()
-
-    body = client.post(ATTEMPTS, headers=auth(user.email),
-                       json={"problem_id": problem.id}).json
-    assert body["source"] == "self_selected"
-    assert body["slot"] is None and body["p_cal"] is None
-    assert body["problem"]["contest_id"] == problem.contest_id
-
-    # One open attempt at a time.
-    assert client.post(ATTEMPTS, headers=auth(user.email),
-                       json={"problem_id": problem.id}).status_code == 409
-
-    client.post(f"{ATTEMPTS}/{body['id']}/give-up", headers=auth(user.email))
-    # Now seen, so a second rated attempt on it is refused.
-    assert client.post(ATTEMPTS, headers=auth(user.email),
-                       json={"problem_id": problem.id}).status_code == 409
-
-    unrated = db.session.query(Problem).filter(Problem.rating.is_(None)).first()
-    assert client.post(ATTEMPTS, headers=auth(user.email),
-                       json={"problem_id": unrated.id}).status_code == 409
-
-    # Rated but untagged: the tag weights are how a result reaches the topics.
-    tagless = Problem(contest_id=problem.contest_id, problem_index="ZZZ",
-                      name="Untagged", rating=1500)
-    db.session.add(tagless)
-    db.session.flush()
-    assert client.post(ATTEMPTS, headers=auth(user.email),
-                       json={"problem_id": tagless.id}).status_code == 409
-    # Not in the catalog at all: an id outside the column's range included.
-    assert client.post(ATTEMPTS, headers=auth(user.email),
-                       json={"problem_id": 2_000_000_000}).status_code == 404
-    assert client.post(ATTEMPTS, headers=auth(user.email),
-                       json={"problem_id": 10 ** 12}).status_code == 404
-    assert client.post(ATTEMPTS, headers=auth(user.email),
-                       json={"pick_id": 1, "problem_id": 2}).status_code == 400
-
-
 def test_the_slot_sequence_runs_warmup_main_stretch_then_stops(client, user, seeded,
                                                               monkeypatch):
     session = start(client, user)

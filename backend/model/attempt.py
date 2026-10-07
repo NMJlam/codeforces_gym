@@ -23,6 +23,9 @@ if TYPE_CHECKING:
     from model.practice_session import PracticeSession
     from model.problem import Problem
 
+# New attempts are session picks or contest replays; `self_selected` survives
+# only because the log keeps the rows it was written for, and the CHECK
+# constraint cannot be narrowed without rewriting old data.
 ATTEMPT_SOURCES = ("session", "self_selected", "contest")
 ATTEMPT_SLOTS = ("warmup", "main", "stretch", "revisit", "recall")
 

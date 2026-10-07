@@ -20,8 +20,6 @@ const TICK_MS = 1000;
 class CurrentSession {
 	/** The open session, or null when there is none. */
 	session = $state<Session | null>(null);
-	/** A self-selected attempt has no session, so it is tracked separately. */
-	standalone = $state<Attempt | null>(null);
 	/** The last scored attempt, so its result stays on screen after scoring. */
 	lastResult = $state<ScoredAttempt | null>(null);
 	/** A request is in flight: the buttons disable. */
@@ -38,7 +36,7 @@ class CurrentSession {
 
 	/** The attempt being timed right now, if any. */
 	get attempt(): Attempt | null {
-		return this.session?.attempts.find((attempt) => attempt.scored_at === null) ?? this.standalone;
+		return this.session?.attempts.find((attempt) => attempt.scored_at === null) ?? null;
 	}
 
 	/** The picked problem waiting to be opened (the API allows one at a time). */
@@ -66,16 +64,7 @@ class CurrentSession {
 
 	async load() {
 		try {
-			const session = await api.currentSession();
-			this.session = session;
-			if (session) {
-				this.standalone = null;
-			} else {
-				// An orphan self-selected attempt is invisible to /sessions/current
-				// and blocks starting a session, so find it in the attempt log.
-				const history = await api.history();
-				this.standalone = history.attempts.find((attempt) => attempt.scored_at === null) ?? null;
-			}
+			this.session = await api.currentSession();
 			this.error = '';
 		} catch (failure) {
 			this.error = errorText(failure);
@@ -90,7 +79,6 @@ class CurrentSession {
 		const session = await this.run(() => api.startSession());
 		if (session) {
 			this.session = session;
-			this.standalone = null;
 			this.lastResult = null;
 		}
 	}
@@ -120,15 +108,6 @@ class CurrentSession {
 		if (attempt) {
 			this.lastResult = null;
 			await this.load();
-		}
-	}
-
-	async openProblem(problemId: number) {
-		const attempt = await this.run(() => api.openProblem(problemId));
-		if (attempt) {
-			this.standalone = attempt;
-			this.lastResult = null;
-			this.startClock();
 		}
 	}
 

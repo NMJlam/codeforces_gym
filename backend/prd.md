@@ -55,7 +55,7 @@ User routes are mounted at `/api/users/...` (`GET /api/users/me`); sync routes a
 | `POST /sessions/{id}/slots/{slot}/replace` | swap a seen pick (marked seen, unrated) |
 | `POST /sessions/{id}/picks/{pick_id}/cancel` | back to the picker: drop an unopened pick, nothing recorded |
 | `POST /sessions/{id}/finish` | save, last-practised, revisits |
-| `POST /attempts` | open problem, start timer (`self_selected` optional: rated, not in calibration) |
+| `POST /attempts` | open the picked problem, start the timer |
 | `POST /attempts/{id}/done` | CF check, score, update |
 | `POST /attempts/{id}/give-up` | S=0, update |
 | `POST /attempts/{id}/pause` | freeze the timer; paused time never expires, does not count |

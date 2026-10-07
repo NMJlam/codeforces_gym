@@ -30,7 +30,7 @@ the profile carries a slider for its four tabs.
 
 | Route | What it shows |
 |---|---|
-| `/session` | the whole flow, behind a picker: **Recommended** (start, pick, open with the 45-minute countdown, pause/resume, Done/give up, notes, finish) or **Self-picked** (bring your own problem id) |
+| `/session` | the whole flow: start, pick, open with the 45-minute countdown, pause/resume, Done/give up, notes, finish |
 | `/profile/dashboard` | rating ± RD, today's session, the activity calendar, topic radars, rating over time |
 | `/profile/topics` | every tag's rating, RD and state (`weak`/`strong`/`unknown`/`not yet relevant`) |
 | `/profile/history` | the attempt log: searchable and one page at a time, notes open in a dialog |
@@ -91,10 +91,11 @@ the profile carries a slider for its four tabs.
 - **After any mutation, re-read.** Actions refresh from the server rather than
   patching local state, so a pick, a score or a sync can never disagree with the
   database.
-- **An open attempt is never lost.** A picked-but-unopened problem and a
-  self-selected attempt (which has no session) are both recovered on load, the
-  latter from the attempt log, because an invisible open attempt would block
-  starting a session.
+- **An open attempt is never lost.** A picked problem waits on its pick, and a
+  running attempt is found in the open session, because an invisible open
+  attempt would block starting a session. A pick is the only way to open one:
+  a problem you solve on your own time is not a training attempt, so the
+  submissions sync marks it seen instead of rating it.
 
 ## Checks
 

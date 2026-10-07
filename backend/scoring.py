@@ -240,7 +240,7 @@ def create_scored_attempt(user_id: int, problem: Problem, score: int, *, source:
                           p_cal: float | None = None, info_factor: float = 1.0,
                           now: datetime | None = None,
                           seen_reason: str = "attempted") -> Attempt:
-    """Create an already-scored rated attempt (contest replay, self-selected).
+    """Create an already-scored rated attempt (contest replay, seed).
 
     `now` is the time the rating update is aged to; it defaults to `scored_at`,
     which is right for replay. Session attempts go through `score_open_attempt`

@@ -16,47 +16,34 @@ import scoring
 from flask import Blueprint, abort, g, request
 from sqlalchemy import select
 
-from model import Attempt, PracticeSession, Problem, SeenProblem, SessionPick, db
+from model import Attempt, PracticeSession, Problem, SessionPick, db
 from routes.views import attempt_json, scored_json
 
 attempt_bp = Blueprint("attempts", __name__)
 
 ANNOTATION_FIELDS = ("key_idea", "upsolved")
 
-# problems.id is a 32-bit integer column, so an id outside that range cannot be
-# a catalog row: it is a miss (404), not a database error.
-MAX_PROBLEM_ID = 2 ** 31 - 1
-
 
 @attempt_bp.post("")
 def open_attempt():
-    """Open a problem and start its 45-minute timer.
+    """Open the session's picked problem and start its 45-minute timer.
 
-    Either a `pick_id` from the current session (the picked problem, with the
-    calibrated chance it was picked at) or a `problem_id` chosen by the user
-    (rated too: a self-selected failure is recorded exactly like a picked one).
+    A pick is the only way in: a problem done on your own time is not a training
+    attempt at all, and the submissions sync already marks it seen.
     """
     user = g.user
     now = datetime.now(timezone.utc)
     body = request.get_json(silent=True)
-    if not isinstance(body, dict) or len(body) != 1:
-        abort(400, "send exactly one of pick_id or problem_id")
+    if not isinstance(body, dict) or set(body) != {"pick_id"}:
+        abort(400, "send the pick_id of the pick to open")
+    if not isinstance(body["pick_id"], int):
+        abort(400, "pick_id must be an integer")
 
     scoring.score_if_expired(user.id, now)
     if scoring.open_attempt(user.id) is not None:
         abort(409, "an attempt is already open")
 
-    if "pick_id" in body:
-        if not isinstance(body["pick_id"], int):
-            abort(400, "pick_id must be an integer")
-        attempt = _open_pick(user, body["pick_id"], now)
-    elif "problem_id" in body:
-        if not isinstance(body["problem_id"], int):
-            abort(400, "problem_id must be an integer")
-        attempt = _open_self_selected(user, body["problem_id"], now)
-    else:
-        abort(400, "send exactly one of pick_id or problem_id")
-
+    attempt = _open_pick(user, body["pick_id"], now)
     db.session.commit()
     return attempt_json(attempt)
 
@@ -207,33 +194,6 @@ def _open_pick(user, pick_id, now: datetime) -> Attempt:
     db.session.add(attempt)
     db.session.flush()
     pick.opened_attempt_id = attempt.id
-    return attempt
-
-
-def _open_self_selected(user, problem_id, now: datetime) -> Attempt:
-    problem = None if not 0 < problem_id <= MAX_PROBLEM_ID else db.session.get(Problem, problem_id)
-    if problem is None:
-        abort(404, "that problem is not in the catalog")
-    if problem.rating is None:
-        abort(409, "unrated problems cannot be rated")
-    if not problem.tags:
-        # A rated update needs technique evidence: the tag weights are how the
-        # result reaches the topic ratings.
-        abort(409, "that problem has no tags, so its result cannot be rated")
-    already = db.session.get(SeenProblem, (user.id, problem.id)) is not None or db.session.scalar(
-        select(Attempt.id).where(
-            Attempt.user_id == user.id, Attempt.problem_id == problem.id, Attempt.rated,
-        )
-    ) is not None
-    if already:
-        abort(409, "that problem is already seen")
-
-    # p_cal stays null: there was no picked target chance to compare against.
-    attempt = Attempt(
-        user_id=user.id, problem_id=problem.id, session_id=None, slot=None,
-        source="self_selected", rated=True, started_at=now,
-    )
-    db.session.add(attempt)
     return attempt
 
 

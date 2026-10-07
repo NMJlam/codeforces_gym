@@ -63,7 +63,7 @@ than failing on the first request that needs one.
 | `POST /sessions/{id}/slots/{slot}/replace` | swap a pick: old problem marked skipped, unrated |
 | `POST /sessions/{id}/picks/{pick_id}/cancel` | go back to the picker: drop an unopened pick, nothing recorded |
 | `POST /sessions/{id}/finish` | close, mark seen, queue revisits for failures |
-| `POST /attempts` | open a picked (`pick_id`) or self-selected (`problem_id`) problem |
+| `POST /attempts` | open the picked problem (`pick_id`) and start its timer |
 | `POST /attempts/{id}/done` | one CF call (one retry), score S=1 on an in-window Accepted |
 | `POST /attempts/{id}/give-up` | score S=0, no CF call |
 | `POST /attempts/{id}/pause` | freeze the timer while interrupted; idempotent |

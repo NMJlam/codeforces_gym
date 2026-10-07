@@ -14,6 +14,11 @@ export type Rating = { rating: number; rd: number };
 export type Slot = 'warmup' | 'main' | 'stretch' | 'recall';
 /** The three slots the picker serves: `recall` is handed out by the revisit queue instead. */
 export type SessionSlot = 'warmup' | 'main' | 'stretch';
+/**
+ * Attempts are opened from a pick (`session`) or replayed from a past contest
+ * (`contest`); `self_selected` only survives on rows written before picking was
+ * the only way in.
+ */
 export type Source = 'session' | 'self_selected' | 'contest';
 export type SkillState = 'not_yet_relevant' | 'unknown' | 'weak' | 'strong';
 
@@ -207,9 +212,6 @@ export const api = {
 	openPick: (pickId: number) =>
 		request<Attempt>('/attempts', { method: 'POST', body: { pick_id: pickId } }),
 
-	openProblem: (problemId: number) =>
-		request<Attempt>('/attempts', { method: 'POST', body: { problem_id: problemId } }),
-
 	done: (attemptId: number) =>
 		request<ScoredAttempt>(`/attempts/${attemptId}/done`, { method: 'POST' }),
 
@@ -226,6 +228,7 @@ export const api = {
 		request<Attempt>(`/attempts/${attemptId}`, { method: 'PATCH', body }),
 
 	skills: () => request<Skills>('/skills'),
+
 	history: (query: HistoryQuery = {}) => {
 		const params = new URLSearchParams();
 		if (query.q) params.set('q', query.q);
