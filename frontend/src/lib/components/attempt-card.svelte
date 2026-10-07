@@ -2,7 +2,7 @@
 	import type { Attempt } from '#lib/api.js';
 	import Badge from '#lib/components/ui/badge.svelte';
 	import Button from '#lib/components/ui/button.svelte';
-	import Textarea from '#lib/components/ui/textarea.svelte';
+	import NoteEditor from '#lib/components/note-editor.svelte';
 	import ProblemLine from '#lib/components/problem-line.svelte';
 	import { current } from '#lib/current-session.svelte.js';
 	import { SLOT_LABELS, formatChance, formatCountdown, formatWhen } from '#lib/format.js';
@@ -23,21 +23,6 @@
 				? 'contest'
 				: 'self-selected'
 	);
-
-	// The draft is seeded and re-synced from the server's copy, which is also
-	// what a save returns, so an in-flight edit is never clobbered mid-typing.
-	let keyIdea = $state('');
-	$effect(() => {
-		keyIdea = attempt.key_idea ?? '';
-	});
-
-	// Collapsed unless the user opens it: a failed attempt already prompts for the
-	// key idea, and a page of open textareas buries the next problem.
-	let notesOpen = $state(false);
-
-	async function saveKeyIdea() {
-		if (await current.annotate(attempt.id, { key_idea: keyIdea })) notesOpen = false;
-	}
 </script>
 
 <article class="space-y-3 rounded-lg border p-3 {running ? 'border-primary/40 bg-primary/5' : ''}">
@@ -128,16 +113,13 @@
 			{/if}
 		</div>
 
-		<details class="text-sm" bind:open={notesOpen}>
+		<details class="text-sm">
 			<summary class="text-muted-foreground cursor-pointer select-none hover:text-foreground">
 				Notes{#if attempt.key_idea}&nbsp;· saved{/if}{#if attempt.upsolved_at}&nbsp;· upsolved{/if}
 			</summary>
 			<div class="mt-2 space-y-2">
-				<Textarea bind:value={keyIdea} placeholder="What was the key idea?" rows={3} />
+				<NoteEditor {attempt} />
 				<div class="flex flex-wrap gap-2">
-					<Button size="sm" onclick={saveKeyIdea} disabled={current.busy}>
-						Save key idea
-					</Button>
 					<Button
 						size="sm"
 						variant={attempt.upsolved_at ? 'primary' : 'outline'}

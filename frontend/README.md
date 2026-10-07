@@ -44,16 +44,18 @@ the profile carries a slider for its four tabs.
 - `src/lib/current-session.svelte.ts` — the open session and the attempt being
   timed, shared by the dashboard and the session page.
 - `src/lib/format.ts` — countdown/date/chance formatting.
+- `src/lib/markdown.ts` — the one markdown-it instance notes are rendered with.
 - `src/lib/components/segmented-nav.svelte` — the pickers: equal-width links
   with a pill that slides under the active one. It reads the route itself, so
   the two top-level pickers and the profile slider are the same component.
 - `src/lib/components/contribution-graph.svelte` — the GitHub-style activity
   calendar on the dashboard. A pure view of `GET /history`: one square per
   local day, one column per week, shaded by that day's attempt count.
-- `src/lib/components/` — `attempt-card`, `problem-line` and small UI
-  primitives (`button`, `panel`, `badge`, `input`, `textarea`) in the same
-  Tailwind style as the vendored `ui/tabs` and `ui/table` components. Tables use
-  `Table.Root variant="card"` for the separated-border, rounded-row look.
+- `src/lib/components/` — `attempt-card`, `note-editor`, `problem-line` and
+  small UI primitives (`button`, `panel`, `badge`, `input`, `textarea`) in the
+  same Tailwind style as the vendored `ui/tabs` and `ui/table` components.
+  Tables use `Table.Root variant="card"` for the separated-border, rounded-row
+  look.
 
 ## Rules the UI keeps
 
@@ -61,8 +63,15 @@ the profile carries a slider for its four tabs.
   and the editorial search string only appears once the attempt is scored — the
   pick card deliberately has neither.
 - **Notes stay out of the way.** The key-idea box is collapsed on every card,
-  failed attempts included — the result panel already asks for it — and it
-  closes itself once the idea is saved.
+  failed attempts included — the result panel already asks for it.
+- **A save never closes anything.** `note-editor` moves its own baseline
+  instead: the button goes quiet, a "Saved" note appears for a moment, and the
+  editor stays where it is, showing the note it just stored.
+- **Notes are markdown.** `lib/markdown.ts` is the single renderer, configured
+  with `html: false` and markdown-it's own link validation, which is why the
+  output needs no sanitizer pass before `{@html}`. The editor (`note-editor`)
+  carries the Display/Source picker and previews the draft, not the stored
+  copy.
 - **The timer is the server's.** The countdown is a view of the attempt's
   `deadline`; when it reaches zero the client re-reads the session and lets the
   backend score the run-out attempt, because every endpoint that touches an

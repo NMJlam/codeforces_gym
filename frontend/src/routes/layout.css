@@ -104,8 +104,71 @@
 	}
 }
 
-/* Page backdrop: a purple radial glow and a dual-scale grid, both in the primary
-   hue at low opacity (same recipe as the LayerChart docs). */
+/* Rendered key-idea notes (`markdown-it` output arrives through {@html}, so the
+   selectors cannot live in the component that renders it). Block rhythm is the
+   `> * + *` rule rather than `space-y-*`: markdown output has no wrapper classes
+   to hang utilities on, and this keeps one spacing rule for every element. */
+@layer components {
+	.note-markdown {
+		@apply text-sm leading-relaxed;
+	}
+	.note-markdown > * + * {
+		@apply mt-2;
+	}
+	.note-markdown li + li,
+	.note-markdown :is(ul, ol) :is(ul, ol) {
+		@apply mt-1;
+	}
+	.note-markdown :is(h1, h2, h3, h4, h5, h6) {
+		@apply font-medium;
+	}
+	.note-markdown h1 {
+		@apply text-base;
+	}
+	.note-markdown :is(h2, h3, h4, h5, h6) {
+		@apply text-sm;
+	}
+	.note-markdown :is(ul, ol) {
+		@apply pl-5;
+	}
+	.note-markdown ul {
+		@apply list-disc;
+	}
+	.note-markdown ol {
+		@apply list-decimal;
+	}
+	.note-markdown li {
+		@apply marker:text-muted-foreground;
+	}
+	.note-markdown code {
+		@apply bg-muted rounded px-1 py-0.5 font-mono text-xs;
+	}
+	.note-markdown pre {
+		@apply bg-muted overflow-x-auto rounded-md p-3;
+	}
+	.note-markdown pre code {
+		@apply bg-transparent p-0;
+	}
+	.note-markdown blockquote {
+		@apply border-border text-muted-foreground border-l-2 pl-3;
+	}
+	.note-markdown a {
+		@apply text-primary hover:underline;
+	}
+	.note-markdown hr {
+		@apply border-border;
+	}
+	.note-markdown table {
+		@apply w-full text-left;
+	}
+	.note-markdown :is(th, td) {
+		@apply border-border/50 border-b px-2 py-1;
+	}
+	.note-markdown img {
+		@apply max-w-full rounded-md;
+	}
+}
+
 @layer utilities {
 	.background-gradient {
 		background: radial-gradient(
